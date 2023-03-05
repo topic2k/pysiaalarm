@@ -190,7 +190,7 @@ class BaseEvent(ABC):
         if msg is None:  # pragma: no cover
             return None
         crc = 0
-        for letter in str.encode(msg):
+        for letter in str.encode(msg, 'cp1252'):
             temp = letter
             for _ in range(0, 8):
                 temp ^= crc & 1
@@ -356,6 +356,7 @@ class SIAEvent(BaseEvent):
             res = f'"*{response_type.value}"{self.sequence}R{self.receiver}L{self.line}#{self.account}[{encrypted_content}'
         header = ("%04x" % len(res)).upper()
         new_crc = self._crc_calc(res)
+        self.binary_crc = True
         if self.binary_crc and new_crc is not None:
             new_crc_int = int(new_crc, 16)
             new_crc = str(bytes([new_crc_int >> 16, new_crc_int & 0xFF]))
@@ -448,10 +449,21 @@ class SIAEvent(BaseEvent):
         x_data_list = self.x_data.split("][")
         self.extended_data = []
         for x_data in x_data_list:  # pragma: no cover
-            xdata = _load_xdata().get(x_data[0], None)
-            if xdata:
-                xdata.value = x_data[1:]
-                self.extended_data.append(xdata)
+            if x_data[1:4] == 'TNT':
+                device, dummy, text = x_data[1:].split(';')
+                xdata = _load_xdata().get('L', None)
+                if xdata:
+                    xdata.value = device
+                    self.extended_data.append(xdata)
+                xdata = _load_xdata().get('I', None)
+                if xdata:
+                    xdata.value = text
+                    self.extended_data.append(xdata)
+            else:
+                xdata = _load_xdata().get(x_data[0], None)
+                if xdata:
+                    xdata.value = x_data[1:]
+                    self.extended_data.append(xdata)
         self._xdata_parsed = True
 
     def sia_account_from_message(self) -> SIAAccount | None:  # pragma: no cover
@@ -535,6 +547,7 @@ class NAKEvent(BaseEvent):
         res = f'"NAK"0000L0R0A0[]{self._get_timestamp()}'
         header = ("%04x" % len(res)).upper()
         new_crc = self._crc_calc(res)
+        self.binary_crc = True
         if self.binary_crc and new_crc is not None:
             new_crc_int = int(new_crc, 16)
             new_crc = str(bytes([new_crc_int >> 16, new_crc_int & 0xFF]))

@@ -56,7 +56,7 @@ class BaseSIAServer(ABC):
             ResponseType: The response to send to the alarm.
 
         """
-        line = str.strip(data.decode("ascii", errors="ignore"))
+        line = str.strip(data.decode("cp1252", errors="ignore"))
         if not line:
             return None
         self.log_and_count(COUNTER_EVENTS, line=line)
