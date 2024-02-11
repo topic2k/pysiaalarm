@@ -31,6 +31,7 @@ class BaseSIAServer(ABC):
         counts: Counter,
         func: Callable[[SIAEvent], None] | None = None,
         async_func: Callable[[SIAEvent], Awaitable[None]] | None = None,
+        encoding: str = "ascii"
     ):
         """Create a SIA Server.
 
@@ -44,6 +45,7 @@ class BaseSIAServer(ABC):
         self.async_func = async_func
         self.counts = counts
         self.shutdown_flag = False
+        self.encoding = encoding
 
     def parse_and_check_event(self, data: bytes) -> EventsType | None:
         """Parse and check the line and create the event, check the account and define the response.
@@ -56,18 +58,18 @@ class BaseSIAServer(ABC):
             ResponseType: The response to send to the alarm.
 
         """
-        line = str.strip(data.decode("ascii", errors="ignore"))
+        line = str.strip(data.decode(self.encoding, errors="ignore"))
         if not line:
             return None
         self.log_and_count(COUNTER_EVENTS, line=line)
         try:
-            event = SIAEvent.from_line(line, self.accounts)
+            event = SIAEvent.from_line(line, self.accounts, self.encoding)
         except NoAccountError as exc:
             self.log_and_count(COUNTER_ACCOUNT, line, exception=exc)
-            return NAKEvent()
+            return NAKEvent(encoding=self.encoding)
         except EventFormatError as exc:
             self.log_and_count(COUNTER_FORMAT, line, exception=exc)
-            return NAKEvent()
+            return NAKEvent(encoding=self.encoding)
 
         if isinstance(event, OHEvent):
             return event  # pragma: no cover

@@ -24,6 +24,7 @@ class SIAServerTCP(BaseSIAServer):
         accounts: dict[str, SIAAccount],
         func: Callable[[SIAEvent], Awaitable[None]],
         counts: Counter,
+        encoding="ascii"
     ):
         """Create a SIA TCP Server.
 
@@ -31,8 +32,9 @@ class SIAServerTCP(BaseSIAServer):
             accounts Dict[str, SIAAccount] -- accounts as dict with account_id as key, SIAAccount object as value.  # pylint: disable=line-too-long
             func Callable[[SIAEvent], None] -- Function called for each valid SIA event, that can be matched to a account.  # pylint: disable=line-too-long
             counts Counter -- counter kept by client to give insights in how many errorous events were discarded of each type.  # pylint: disable=line-too-long
+            encoding -- codec to use for incoming data decoding. Defaults to ascii.
         """
-        BaseSIAServer.__init__(self, accounts, counts, async_func=func)
+        BaseSIAServer.__init__(self, accounts, counts, async_func=func, encoding=encoding)
 
     async def handle_line(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -69,6 +71,7 @@ class SIAServerUDP(BaseSIAServer, asyncio.DatagramProtocol):
         accounts: dict[str, SIAAccount],
         func: Callable[[SIAEvent], Awaitable[None]],
         counts: Counter,
+        encoding="ascii"
     ):
         """Create a SIA UDP Server.
 
@@ -77,8 +80,9 @@ class SIAServerUDP(BaseSIAServer, asyncio.DatagramProtocol):
             accounts {Dict[str, SIAAccount]} -- accounts as dict with account_id as key, SIAAccount object as value.  # pylint: disable=line-too-long
             func {Callable[[SIAEvent], None]} -- Function called for each valid SIA event, that can be matched to a account.  # pylint: disable=line-too-long
             counts {Counter} -- counter kept by client to give insights in how many errorous events were discarded of each type.  # pylint: disable=line-too-long
+            encoding -- codec to use for incoming data decoding. Defaults to ascii.
         """
-        BaseSIAServer.__init__(self, accounts, counts, async_func=func)
+        BaseSIAServer.__init__(self, accounts, counts, async_func=func, encoding=encoding)
         self.transport: asyncio.DatagramTransport | None = None
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:

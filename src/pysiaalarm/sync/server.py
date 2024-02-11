@@ -26,6 +26,7 @@ class SIATCPServer(ThreadingTCPServer, BaseSIAServer):
         accounts: dict[str, SIAAccount],
         func: Callable[[SIAEvent], None],
         counts: Counter,
+        encoding: str = "ascii",
     ):
         """Create a SIA TCP Server.
 
@@ -34,9 +35,10 @@ class SIATCPServer(ThreadingTCPServer, BaseSIAServer):
             accounts Dict[str, SIAAccount] -- accounts as dict with account_id as key, SIAAccount object as value.  # pylint: disable=line-too-long
             func Callable[[SIAEvent], None] -- Function called for each valid SIA event, that can be matched to a account.  # pylint: disable=line-too-long
             counts Counter -- counter kept by client to give insights in how many errorous events were discarded of each type.  # pylint: disable=line-too-long
+            encoding -- codec to use for incoming data decoding. Defaults to ascii.
         """
         ThreadingTCPServer.__init__(self, server_address, SIATCPHandler)
-        BaseSIAServer.__init__(self, accounts, counts, func=func)
+        BaseSIAServer.__init__(self, accounts, counts, func=func, encoding=encoding)
 
 
 class SIAUDPServer(ThreadingUDPServer, BaseSIAServer):
@@ -51,6 +53,7 @@ class SIAUDPServer(ThreadingUDPServer, BaseSIAServer):
         accounts: dict[str, SIAAccount],
         func: Callable[[SIAEvent], None],
         counts: Counter,
+        encoding: str = "ascii"
     ):
         """Create a SIA UDP Server.
 
@@ -59,6 +62,7 @@ class SIAUDPServer(ThreadingUDPServer, BaseSIAServer):
             accounts Dict[str, SIAAccount] -- accounts as dict with account_id as key, SIAAccount object as value.  # pylint: disable=line-too-long
             func Callable[[SIAEvent], None] -- Function called for each valid SIA event, that can be matched to a account.  # pylint: disable=line-too-long
             counts Counter -- counter kept by client to give insights in how many errorous events were discarded of each type.  # pylint: disable=line-too-long
+            encoding -- codec to use for incoming data decoding. Defaults to ascii.
         """
         ThreadingUDPServer.__init__(self, server_address, SIAUDPHandler)
-        BaseSIAServer.__init__(self, accounts, counts, func=func)
+        BaseSIAServer.__init__(self, accounts, counts, func=func, encoding=encoding)

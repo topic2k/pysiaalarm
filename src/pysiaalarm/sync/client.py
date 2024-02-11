@@ -28,6 +28,7 @@ class SIAClient(Thread, BaseSIAClient):
         accounts: list[SIAAccount],
         function: Callable[[SIAEvent], None],
         protocol: CommunicationsProtocol = CommunicationsProtocol.TCP,
+        encoding: str = "ascii",
     ):
         """Create the threaded SIA Client object.
 
@@ -37,7 +38,7 @@ class SIAClient(Thread, BaseSIAClient):
             accounts {List[SIAAccount]} -- List of SIA Accounts to add.
             function {Callable[[SIAEvent], None]} -- The function that gets called for each event.
             protocol {CommunicationsProtocol Enum} -- CommunicationsProtocol to use, TCP or UDP.
-
+            encoding -- codec to use for incoming data decoding. Defaults to ascii.
         """
         if asyncio.iscoroutinefunction(function):
             raise TypeError(
@@ -46,17 +47,17 @@ class SIAClient(Thread, BaseSIAClient):
         Thread.__init__(self)
         BaseSIAClient.__init__(self, host, port, accounts, protocol)
         self._func: Callable[[SIAEvent], None] = function
-        self.sia_server: SIATCPServer | SIAUDPServer = self.get_server()
+        self.sia_server: SIATCPServer | SIAUDPServer = self.get_server(encoding=encoding)
         self.server_thread: Thread | None = None
 
-    def get_server(self) -> SIATCPServer | SIAUDPServer:
+    def get_server(self, encoding: str = "ascii") -> SIATCPServer | SIAUDPServer:
         """Set the sia server to a TCP server."""
         if self.protocol == CommunicationsProtocol.TCP:
             return SIATCPServer(  # type: ignore
-                (self._host, self._port), self._accounts, self._func, self._counts
+                (self._host, self._port), self._accounts, self._func, self._counts, encoding
             )
         return SIAUDPServer(  # type: ignore
-            (self._host, self._port), self._accounts, self._func, self._counts
+            (self._host, self._port), self._accounts, self._func, self._counts, encoding
         )
 
     def __enter__(self) -> SIAClient:

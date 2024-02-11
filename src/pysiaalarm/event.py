@@ -76,6 +76,9 @@ class BaseEvent(ABC):
     _sia_added: bool = field(init=False, default=False, repr=False)
     _xdata_parsed: bool = field(init=False, default=False, repr=False)
 
+    # device specific parameters
+    encoding: str = "ascii"
+
     @property
     def valid_message(self) -> bool:
         """Return True for OH and NAK Events."""
@@ -119,13 +122,14 @@ class BaseEvent(ABC):
 
     @classmethod
     def from_line(
-        cls, incoming: str, accounts: dict[str, SIAAccount] | None = None
+        cls, incoming: str, accounts: dict[str, SIAAccount] | None = None, encoding: str = "ascii"
     ) -> SIAEvent:
         """Create a Event from a line.
 
         Arguments:
             incoming {str} -- The line to be parsed.
             accounts {List[SIAAccount]} -- accounts to check against, optional
+            encoding {str} -- the codec to use for incoming data decoding, optional, defaults to 'ascii'
 
         Raises:
             EventFormatError: If the event is not formatted according to SIA DC09 or ADM-CID.
@@ -171,6 +175,7 @@ class BaseEvent(ABC):
             content=main_content["rest"] if not encrypted else None,
             encrypted_content=main_content["rest"] if encrypted else None,
             sia_account=sia_account,
+            encoding=encoding
         )
 
     @staticmethod
@@ -184,13 +189,12 @@ class BaseEvent(ABC):
             )
         return datetime.utcnow().strftime("_%H:%M:%S,%m-%d-%Y")
 
-    @staticmethod
-    def _crc_calc(msg: str | None) -> str | None:
+    def _crc_calc(self, msg: str | None) -> str | None:
         """Calculate the CRC of the msg."""
         if msg is None:  # pragma: no cover
             return None
         crc = 0
-        for letter in str.encode(msg):
+        for letter in str.encode(msg, self.encoding):
             temp = letter
             for _ in range(0, 8):
                 temp ^= crc & 1
@@ -446,10 +450,22 @@ class SIAEvent(BaseEvent):
         x_data_list = self.x_data.split("][")
         self.extended_data = []
         for x_data in x_data_list:  # pragma: no cover
-            xdata = _load_xdata().get(x_data[0], None)
-            if xdata:
-                xdata.value = x_data[1:]
-                self.extended_data.append(xdata)
+            if x_data[1:4] == 'TNT':
+                if x_data:
+                    device, _, text = x_data[1:].split(';')
+                    xdata = _load_xdata().get('L', None)
+                    if xdata:
+                        xdata.value = device
+                        self.extended_data.append(xdata)
+                    xdata = _load_xdata().get('I', None)
+                    if xdata:
+                        xdata.value = text
+                        self.extended_data.append(xdata)
+                else:
+                    xdata = _load_xdata().get(x_data[0], None)
+                    if xdata:
+                        xdata.value = x_data[1:]
+                        self.extended_data.append(xdata)
         self._xdata_parsed = True
 
     def sia_account_from_message(self) -> SIAAccount | None:  # pragma: no cover

@@ -42,6 +42,7 @@ class SIAClient(BaseSIAClient):
         port: int,
         accounts: list[SIAAccount],
         function: Callable[[SIAEvent], Awaitable[None]],
+        encoding: str = "ascii",
         **kwargs: Any,
     ):
         """Create the asynchronous SIA Client object.
@@ -52,12 +53,14 @@ class SIAClient(BaseSIAClient):
             accounts {List[SIAAccount]} -- List of SIA Accounts to add.
             function {Callable[[SIAEvent], Awaitable[None]]} -- The async function that gets called for each event.  # pylint: disable=line-too-long
             protocol {CommunicationsProtocol Enum} -- CommunicationsProtocol to use, TCP or UDP.
+            encoding {str} -- codec to use for incoming data decoding. Defaults to ascii.
 
         """
         if not asyncio.iscoroutinefunction(function):
             raise TypeError("Function should be a coroutine, create with async def.")
         BaseSIAClient.__init__(self, host, port, accounts, self.protocol)
         self._func = function
+        self.encoding = encoding
 
     async def __aenter__(self, **kwargs: Any) -> SIAClient:
         """Start with as context manager."""
@@ -110,13 +113,14 @@ class SIAClientTCP(SIAClient):
         port: int,
         accounts: list[SIAAccount],
         function: Callable[[SIAEvent], Awaitable[None]],
+        encoding: str = "ascii",
         **kwargs: Any,
     ) -> None:
         """Create the TCP SIA Client object."""
         super().__init__(host, port, accounts, function)
         self.task: asyncio.Task | None = None
         self.sia_server: SIAServerTCP = SIAServerTCP(
-            self._accounts, self._func, self._counts
+            self._accounts, self._func, self._counts, encoding
         )
 
     async def async_start(self, **kwargs: Any) -> None:
@@ -148,12 +152,14 @@ class SIAClientUDP(SIAClient):
         port: int,
         accounts: list[SIAAccount],
         function: Callable[[SIAEvent], Awaitable[None]],
+        encoding: str = "ascii",
         **kwargs: Any,
     ) -> None:
         """Create the UDP SIA Client object."""
-        super().__init__(host, port, accounts, function)
+        super().__init__(host, port, accounts, function, encoding)
         self.transport: asyncio.BaseTransport | None = None
         self.dgprotocol: asyncio.BaseProtocol | None = None
+        self.encoding = encoding
 
     async def async_start(self, **kwargs: Any) -> None:
         """Start the asynchronous SIA UDP server.
@@ -163,7 +169,7 @@ class SIAClientUDP(SIAClient):
         _LOGGER.debug("Starting SIA.")
         loop = asyncio.get_running_loop()
         self.transport, self.dgprotocol = await loop.create_datagram_endpoint(
-            lambda: SIAServerUDP(self._accounts, self._func, self._counts),
+            lambda: SIAServerUDP(self._accounts, self._func, self._counts, self.encoding),
             local_addr=(self._host, self._port),
             **kwargs,
         )
